@@ -61,7 +61,7 @@ struct ZephyrLogger;
 
 impl log::Log for ZephyrLogger {
     fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
-        metadata.level() <= log::Level::Debug
+        metadata.level() <= log::Level::Warn
     }
 
     fn log(&self, record: &log::Record<'_>) {
@@ -314,7 +314,7 @@ pub extern "C" fn fh_rust_init() -> i32 {
         return -1;
     }
     let _ = log::set_logger(&LOGGER);
-    log::set_max_level(log::LevelFilter::Info);
+    log::set_max_level(log::LevelFilter::Warn);
     0
 }
 

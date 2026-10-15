@@ -22,7 +22,6 @@ static uint8_t fh_pool[FH_POOL_SIZE] __aligned(2 * 1024 * 1024);
 static uint8_t fh_page_state[FH_POOL_PAGES];
 static struct k_spinlock fh_pool_lock;
 static uintptr_t fh_pool_pa;
-static uint64_t fh_alloc_sequence;
 
 #ifdef CONFIG_FREEHYPERVISOR_CONTRACT_TESTS
 static atomic_t fh_free_pause;
@@ -85,11 +84,8 @@ uint64_t fh_alloc_frames(size_t count, size_t align_bytes)
 			continue;
 		}
 		memset(&fh_page_state[first], FH_ALLOCATED, count);
-		uint64_t sequence = ++fh_alloc_sequence;
 		k_spin_unlock(&fh_pool_lock, key);
 		memset(&fh_pool[first * FH_PAGE_SIZE], 0, count * FH_PAGE_SIZE);
-		printk("FH: alloc seq=%llu PA=%#lx pages=%zu align_bytes=%zu\n",
-		       sequence, candidate, count, align_bytes);
 		return candidate;
 	}
 	k_spin_unlock(&fh_pool_lock, key);

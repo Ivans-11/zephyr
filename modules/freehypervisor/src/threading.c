@@ -2,7 +2,6 @@
 #include <freehypervisor/zephyr_adapter.h>
 
 #include <zephyr/kernel.h>
-#include <zephyr/sys/printk.h>
 
 #include <errno.h>
 #include <string.h>
@@ -112,8 +111,6 @@ size_t fh_task_spawn(const uint8_t *name, size_t name_len, size_t stack_size,
 		}
 	}
 	k_thread_name_set(tid, task->name);
-	printk("FH: task create handle=%zu name=%s mask=%#zx\n",
-	       task->handle, task->name, cpu_mask);
 	k_thread_start(tid);
 	return task->handle;
 }
@@ -126,9 +123,6 @@ void fh_task_join(size_t handle)
 	}
 	k_sem_take(&task->complete, K_FOREVER);
 	k_thread_join(&task->thread, K_FOREVER);
-	printk("FH_TASK_STATS handle=%zu name=%s run=%llu exit=%llu block=%llu wake=%llu yield=%llu\n",
-	       task->handle, task->name, task->run_count, task->exit_count,
-	       task->block_count, task->wake_count, task->yield_count);
 	k_thread_stack_free(task->stack);
 	k_spinlock_key_t key = k_spin_lock(&fh_tasks_lock);
 	task->used = false;
