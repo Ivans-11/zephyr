@@ -75,14 +75,10 @@ void efi_init(struct efi_boot_arg *efi_arg)
  * registers (for preserving the stack pointer and page table), those
  * are R12/R13.
  *
- * Finally: note that the firmware on at least one board (an Up
- * Squared APL device) will internally ENABLE INTERRUPTS before
- * returing from its OutputString method.  This is... unfortunate, and
- * says poor things about reliability using this code as it will
- * implicitly break the spinlock we're using.  The OS will be able to
- * take an interrupt just fine, but if the resulting ISR tries to log,
- * we'll end up in EFI firmware reentrantly!  The best we can do is an
- * unconditional CLI immediately after returning.
+ * Firmware may enable interrupts inside OutputString. Raise CR8 while
+ * using the firmware page tables so Zephyr interrupt handlers cannot run
+ * with their MMIO mappings absent. Restore the priority only after CLI
+ * and restoring Zephyr's page tables and stack.
  */
 static uint64_t efi_call(void *fn, uint64_t arg1, uint64_t arg2)
 {
@@ -96,15 +92,19 @@ static uint64_t efi_call(void *fn, uint64_t arg1, uint64_t arg2)
 
 	__asm__ volatile("movq %%cr3, %%r12;" /* save zephyr page table */
 			 "movq %%rsp, %%r13;" /* save stack pointer */
+			 "movq %%cr8, %%r14;" /* save interrupt priority */
+			 "movq $15, %%r11;"
+			 "movq %%r11, %%cr8;" /* firmware may enable interrupts */
 			 "movq %%rsi, %%rsp;" /* set stack */
 			 "movq %%rdi, %%cr3;" /* set EFI page table */
 			 "callq *%%rax;"
 			 "cli;"
 			 "movq %%r12, %%cr3;" /* reset paging */
 			 "movq %%r13, %%rsp;" /* reset stack */
+			 "movq %%r14, %%cr8;" /* IRQs can now use Zephyr mappings */
 			 : "+a"(fn)
 			 : "c"(arg1), "d"(arg2), "S"(stack_top), "D"(efi->efi_cr3)
-			 : "r8", "r9", "r10", "r11", "r12", "r13");
+			 : "r8", "r9", "r10", "r11", "r12", "r13", "r14", "memory");
 
 	k_sched_unlock();
 	return (uint64_t) fn;

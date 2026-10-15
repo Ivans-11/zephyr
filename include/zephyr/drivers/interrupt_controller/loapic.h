@@ -161,7 +161,7 @@ static inline void x86_write_loapic(unsigned int reg, uint32_t val)
  * @param ipi Type of IPI: one of the LOAPIC_ICR_IPI_* constants.
  * @param vector If applicable, the target vector (0 otherwise).
  */
-static inline void z_loapic_ipi(uint8_t apic_id, uint32_t ipi, uint8_t vector)
+static inline void z_loapic_ipi(uint32_t apic_id, uint32_t ipi, uint8_t vector)
 {
 	ipi |= vector;
 

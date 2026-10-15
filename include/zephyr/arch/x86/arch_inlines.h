@@ -41,7 +41,13 @@ static ALWAYS_INLINE uint32_t arch_proc_id(void)
 
 static ALWAYS_INLINE unsigned int arch_num_cpus(void)
 {
+#if defined(CONFIG_X86_64) && defined(CONFIG_ACPI)
+	extern unsigned int z_x86_num_cpus;
+
+	return z_x86_num_cpus;
+#else
 	return CONFIG_MP_MAX_NUM_CPUS;
+#endif
 }
 
 #endif /* !_ASMLANGUAGE */

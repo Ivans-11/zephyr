@@ -26,3 +26,9 @@ config FREEHYPERVISOR_MODE_KICK
 	select FREEHYPERVISOR_CORE
 
 endchoice
+
+config FREEHYPERVISOR_REBOOT_ON_FINISH
+	bool "Reboot after validation finishes"
+	default y
+	help
+	  Disable on physical boards to keep the result visible on the console.

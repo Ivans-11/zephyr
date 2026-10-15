@@ -136,6 +136,33 @@ static void disable_hpet(void)
 	hpet[32] &= ~4;
 }
 
+/* Stop the firmware's local APIC timer before replacing its IDT. Masking
+ * alone does not discard an interrupt already pending in the APIC IRR.
+ * Let the firmware service that interrupt while its handlers are still valid.
+ */
+static void quiesce_apic_timer(void)
+{
+	uint32_t low, high;
+
+	__asm__ volatile("rdmsr" : "=a"(low), "=d"(high) : "c"(0x1b));
+	if (low & (1U << 11)) {
+		if (low & (1U << 10)) {
+			__asm__ volatile("rdmsr" : "=a"(low), "=d"(high) : "c"(0x832));
+			low |= 1U << 16;
+			__asm__ volatile("wrmsr" :: "a"(low), "d"(high), "c"(0x832));
+		} else {
+			uintptr_t base = ((uint64_t)high << 32 | low) & ~0xfffULL;
+			volatile uint32_t *timer = (void *)(base + 0x320);
+
+			*timer |= 1U << 16;
+		}
+	}
+	__asm__ volatile("sti" ::: "memory");
+	for (volatile int i = 0; i < 1000000; i++) {
+	}
+	__asm__ volatile("cli" ::: "memory");
+}
+
 /* FIXME: if you check the generated code, "ms_abi" calls like this
  * have to SPILL HALF OF THE SSE REGISTER SET TO THE STACK on entry
  * because of the way the conventions collide.  Is there a way to
@@ -231,6 +258,7 @@ uintptr_t __abi efi_entry(void *img_handle, struct efi_system_table *sys_tab)
 	 */
 	for (volatile int i = 0; i < 50000000; i++) {
 	}
+	quiesce_apic_timer();
 
 	__asm__ volatile("cli; movq %0, %%rbx; jmp *%1"
 			 :: "r"(&efi_arg), "r"(code) : "rbx");

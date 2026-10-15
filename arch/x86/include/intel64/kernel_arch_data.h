@@ -43,7 +43,7 @@ struct x86_interrupt_ssp_table {
 	uintptr_t ist7;
 };
 
-extern uint8_t x86_cpu_loapics[];	/* CPU logical ID -> local APIC ID */
+extern uint32_t x86_cpu_loapics[];	/* CPU logical ID -> local APIC ID */
 #endif /* _ASMLANGUAGE */
 
 #ifdef CONFIG_X86_KPTI

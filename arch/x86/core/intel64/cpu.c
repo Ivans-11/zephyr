@@ -28,10 +28,69 @@
  */
 
 #if defined(CONFIG_ACPI)
-__weak uint8_t x86_cpu_loapics[CONFIG_MP_MAX_NUM_CPUS];
+__weak uint32_t x86_cpu_loapics[CONFIG_MP_MAX_NUM_CPUS];
+unsigned int z_x86_num_cpus = CONFIG_MP_MAX_NUM_CPUS;
+
+/* Discover enabled processors before SMP startup. Keep the BSP at logical 0. */
+static int discover_cpus(void)
+{
+	ACPI_TABLE_HEADER *madt = acpi_table_get("APIC", 0);
+	uint32_t bsp = x86_read_loapic(LOAPIC_ID);
+
+	if (!IS_ENABLED(CONFIG_X2APIC)) {
+		bsp >>= 24;
+	}
+	x86_cpu_loapics[0] = bsp;
+	z_x86_num_cpus = 1;
+	if (madt == NULL || madt->Length < sizeof(ACPI_TABLE_MADT)) {
+		printk("ACPI: no valid MADT; using BSP only\n");
+		return 0;
+	}
+	for (size_t off = sizeof(ACPI_TABLE_MADT);
+	     off + sizeof(ACPI_SUBTABLE_HEADER) <= madt->Length;) {
+		ACPI_SUBTABLE_HEADER *entry = (void *)((uint8_t *)madt + off);
+		uint32_t id, flags;
+
+		if (entry->Length < sizeof(*entry) || entry->Length > madt->Length - off) {
+			printk("ACPI: malformed MADT CPU entry\n");
+			break;
+		}
+		off += entry->Length;
+		if (entry->Type == ACPI_MADT_TYPE_LOCAL_APIC &&
+		    entry->Length >= sizeof(ACPI_MADT_LOCAL_APIC)) {
+			ACPI_MADT_LOCAL_APIC *cpu = (void *)entry;
+
+			id = cpu->Id;
+			flags = cpu->LapicFlags;
+		} else if (entry->Type == ACPI_MADT_TYPE_LOCAL_X2APIC &&
+			   entry->Length >= sizeof(ACPI_MADT_LOCAL_X2APIC)) {
+			ACPI_MADT_LOCAL_X2APIC *cpu = (void *)entry;
+
+			id = cpu->LocalApicId;
+			flags = cpu->LapicFlags;
+		} else {
+			continue;
+		}
+		if (!(flags & 1U) || (!IS_ENABLED(CONFIG_X2APIC) && id > 255)) {
+			continue;
+		}
+		bool duplicate = false;
+
+		for (unsigned int i = 0; i < z_x86_num_cpus; i++) {
+			duplicate |= x86_cpu_loapics[i] == id;
+		}
+		if (!duplicate && z_x86_num_cpus < CONFIG_MP_MAX_NUM_CPUS) {
+			x86_cpu_loapics[z_x86_num_cpus++] = id;
+		}
+	}
+	printk("ACPI: %u enabled host CPUs (limit %u)\n",
+	       z_x86_num_cpus, CONFIG_MP_MAX_NUM_CPUS);
+	return 0;
+}
+SYS_INIT(discover_cpus, POST_KERNEL, 0);
 #else
 #define INIT_CPUID(n, _) n
-__weak uint8_t x86_cpu_loapics[] = {
+__weak uint32_t x86_cpu_loapics[] = {
 	LISTIFY(CONFIG_MP_MAX_NUM_CPUS, INIT_CPUID, (,)),};
 #endif
 extern char x86_ap_start[]; /* AP entry point in locore.S */
@@ -65,22 +124,7 @@ void arch_cpu_start(int cpu_num, k_thread_stack_t *stack, int sz,
 {
 #if CONFIG_MP_MAX_NUM_CPUS > 1
 	uint8_t vector = ((unsigned long) x86_ap_start) >> 12;
-	uint8_t apic_id;
-
-	IF_ENABLED(CONFIG_ACPI, ({
-		ACPI_MADT_LOCAL_APIC *lapic = acpi_local_apic_get(cpu_num);
-
-		if (lapic != NULL) {
-			/* We update the apic_id, __start will need it. */
-			x86_cpu_loapics[cpu_num] = lapic->Id;
-		} else {
-			/* TODO: kernel need to handle the error scenario if someone config
-			 * CONFIG_MP_MAX_NUM_CPUS more than what platform supported.
-			 */
-			__ASSERT(false, "CPU reached more than maximum supported!");
-			return;
-		}
-	}));
+	uint32_t apic_id;
 
 	apic_id = x86_cpu_loapics[cpu_num];
 
@@ -110,10 +154,6 @@ void arch_cpu_start(int cpu_num, k_thread_stack_t *stack, int sz,
  */
 FUNC_NORETURN void z_x86_cpu_init(struct x86_cpuboot *cpuboot)
 {
-#if defined(CONFIG_ACPI) && !defined(CONFIG_ACRN_COMMON)
-	__ASSERT(z_x86_cpuid_get_current_physical_apic_id() ==
-		 x86_cpu_loapics[cpuboot->cpu_id], "APIC ID miss match!");
-#endif
 	x86_sse_init(NULL);
 
 	if (cpuboot->cpu_id == 0U) {
@@ -123,6 +163,15 @@ FUNC_NORETURN void z_x86_cpu_init(struct x86_cpuboot *cpuboot)
 	}
 
 	z_loapic_enable(cpuboot->cpu_id);
+
+#if defined(CONFIG_ACPI) && !defined(CONFIG_ACRN_COMMON)
+	/* The BSP discovers its mapping later, during ACPI initialization. */
+	if (cpuboot->cpu_id != 0U) {
+		__ASSERT((IS_ENABLED(CONFIG_X2APIC) ? x86_read_loapic(LOAPIC_ID) :
+			 (x86_read_loapic(LOAPIC_ID) >> 24)) ==
+			 x86_cpu_loapics[cpuboot->cpu_id], "APIC ID mismatch!");
+	}
+#endif
 
 #ifdef CONFIG_USERSPACE
 	/* Set landing site for 'syscall' instruction */

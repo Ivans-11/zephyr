@@ -13,7 +13,12 @@
 static void finish(const char *marker)
 {
 	printk("%s\n", marker);
-	sys_reboot(SYS_REBOOT_COLD);
+	if (IS_ENABLED(CONFIG_FREEHYPERVISOR_REBOOT_ON_FINISH)) {
+		sys_reboot(SYS_REBOOT_COLD);
+	}
+	for (;;) {
+		k_sleep(K_FOREVER);
+	}
 }
 
 #if defined(CONFIG_FREEHYPERVISOR_MODE_PROBE) || \

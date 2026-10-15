@@ -151,15 +151,24 @@ x86_ap_start:
 	 * so we can locate our x86_cpuboot[] bundle. Put it in EBP.
 	 */
 
+#ifdef CONFIG_X2APIC
+	movl $0x1b, %ecx
+	rdmsr
+	orl $0xc00, %eax
+	wrmsr
+	movl $0x802, %ecx
+	rdmsr
+#else
 	movl LOAPIC_BASE_ADDRESS+LOAPIC_ID, %eax
 	shrl $24, %eax
 	andl $0xFF, %eax		/* local APIC ID -> EAX */
+#endif
 
 	movl $x86_cpuboot, %ebp
 	xorl %ebx, %ebx
 1:	cmpl $CONFIG_MP_MAX_NUM_CPUS, %ebx
 	jz unknown_loapic_id
-	cmpb %al, x86_cpu_loapics(%ebx)
+	cmpl %eax, x86_cpu_loapics(,%ebx,4)
 	je go64				/* proceed to 64-bit mode */
 	incl %ebx
 	addl $__X86_CPUBOOT_SIZEOF, %ebp

@@ -49,6 +49,7 @@ void arch_sched_directed_ipi(uint32_t cpu_bitmap)
 			continue;
 		}
 
-		z_loapic_ipi(i, LOAPIC_ICR_IPI_SPECIFIC, CONFIG_SCHED_IPI_VECTOR);
+		z_loapic_ipi(x86_cpu_loapics[i], LOAPIC_ICR_IPI_SPECIFIC,
+			     CONFIG_SCHED_IPI_VECTOR);
 	}
 }

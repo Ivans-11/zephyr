@@ -74,7 +74,7 @@ DEVICE_MMIO_TOPLEVEL(LOAPIC_REGS_STR, DT_DRV_INST(0));
 __pinned_func
 void send_eoi(void)
 {
-	x86_write_xapic(LOAPIC_EOI, 0);
+	x86_write_loapic(LOAPIC_EOI, 0);
 }
 
 /**
@@ -105,14 +105,6 @@ void z_loapic_enable(unsigned char cpu_number)
 	x86_write_xapic(LOAPIC_LDR, 1 << (cpu_number + 24));
 #endif
 
-	/*
-	 * enable the local APIC. note that we use xAPIC mode here, since
-	 * x2APIC access is not enabled until the next step (if at all).
-	 */
-
-	x86_write_xapic(LOAPIC_SVR,
-			x86_read_xapic(LOAPIC_SVR) | LOAPIC_ENABLE);
-
 #ifdef CONFIG_X2APIC
 	/*
 	 * turn on x2APIC mode. we trust the config option, so
@@ -123,6 +115,12 @@ void z_loapic_enable(unsigned char cpu_number)
 	msr |= X86_APIC_BASE_MSR_X2APIC;
 	z_x86_msr_write(X86_APIC_BASE_MSR, msr);
 #endif
+
+	/* Firmware may already have enabled x2APIC, disabling MMIO access.
+	 * Select the configured access mode before touching APIC registers.
+	 */
+	x86_write_loapic(LOAPIC_SVR,
+			x86_read_loapic(LOAPIC_SVR) | LOAPIC_ENABLE);
 
 	loApicMaxLvt = (x86_read_loapic(LOAPIC_VER) & LOAPIC_MAXLVT_MASK) >> 16;
 
