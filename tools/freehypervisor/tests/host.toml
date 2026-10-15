@@ -1,0 +1,6 @@
+board = "qemu_x86_64"
+cpu = "Skylake-Client,vmx=on"
+cpus = 2
+memory = "128M"
+timeout = 180
+fail_markers = ["result=FAIL", "result=BLOCKED", "FH: Rust panic", "FATAL ERROR"]

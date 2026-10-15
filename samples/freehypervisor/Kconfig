@@ -1,0 +1,28 @@
+mainmenu "FreeHypervisor validation"
+
+source "Kconfig.zephyr"
+
+choice FREEHYPERVISOR_APP_MODE
+	prompt "Validation mode"
+	default FREEHYPERVISOR_MODE_CONTRACT
+
+config FREEHYPERVISOR_MODE_CONTRACT
+	bool "Adapter contract tests"
+	select FREEHYPERVISOR_CONTRACT_TESTS
+
+config FREEHYPERVISOR_MODE_LIFETIME
+	bool "Lifetime/interleaving tests"
+	select FREEHYPERVISOR_CONTRACT_TESTS
+
+config FREEHYPERVISOR_MODE_PROBE
+	bool "Hardware capability probe"
+
+config FREEHYPERVISOR_MODE_CORE
+	bool "Run static guest"
+	select FREEHYPERVISOR_CORE
+
+config FREEHYPERVISOR_MODE_KICK
+	bool "Run guest with dedicated IPI"
+	select FREEHYPERVISOR_CORE
+
+endchoice

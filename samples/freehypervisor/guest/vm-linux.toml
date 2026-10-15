@@ -1,0 +1,33 @@
+[base]
+id = 1
+name = "zephyr-linux"
+vm_type = 1
+cpu_num = 1
+# CPU-set values are bitmasks.  Keep CPU0 available for Zephyr's host timer
+# and run the Linux vCPU on CPU1.
+phys_cpu_sets = [2]
+
+[kernel]
+entry_point = 0x8000
+image_location = "memory"
+kernel_path = "bzImage"
+kernel_load_addr = 0x20_0000
+ramdisk_path = "initramfs.cpio"
+ramdisk_load_addr = 0x200_0000
+enable_bios = false
+boot_protocol = "direct"
+cmdline = "console=ttyS0,115200 earlycon=uart8250,io,0x3f8,115200n8 rdinit=/init panic=-1 acpi=off pci=off nox2apic tsc=reliable lpj=1000000 no_timer_check nokaslr initcall_blacklist=i8042_init"
+memory_regions = [
+  [0, 0x0400_0000, 0x7, 0],
+]
+
+[devices]
+interrupt_mode = "passthrough"
+emu_devices = [
+  ["x86-com1", 0x3f8, 0x8, 0x0, 0x2, []],
+  ["x86-ioapic", 0xfec0_0000, 0x1000, 0x0, 0x23, []],
+  ["x86-pit", 0x40, 0x22, 0x0, 0x24, []],
+]
+passthrough_devices = []
+passthrough_addresses = []
+excluded_devices = []

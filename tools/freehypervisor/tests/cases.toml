@@ -1,0 +1,21 @@
+[contract]
+description = "Memory, tasks, wait queues, IRQ dispatch and absolute timers"
+conf = "contract.conf"
+success_markers = ["FH_RESULT contract result=PASS"]
+
+[lifetime]
+description = "Adapter contracts with a lost-wakeup negative control"
+conf = "lifetime.conf"
+success_markers = ["FH_RESULT lifetime result=PASS"]
+
+[probe]
+description = "VMX hardware capability probe"
+conf = "probe.conf"
+success_markers = ["FH_RESULT vmx-probe result=PASS"]
+
+[linux]
+description = "Boot Linux to PID 1, shut down guest and return from core"
+conf = "linux.conf"
+overlay = "linux.overlay"
+guest = "linux"
+success_markers = ["FH_LINUX_GUEST userspace-entered", "FH_LINUX_GUEST pid=1 result=PASS", "FH_RESULT core-static result=PASS"]

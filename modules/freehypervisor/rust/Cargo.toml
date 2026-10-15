@@ -1,0 +1,21 @@
+[package]
+name = "freehypervisor-zephyr"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+axvisor_core = { git = "https://github.com/Ivans-11/tgoskits", branch = "axvisor-core", default-features = false, features = ["vmx"] }
+axvisor_api = { git = "https://github.com/Ivans-11/tgoskits", branch = "axvisor-core", default-features = false }
+ax-percpu = { git = "https://github.com/Ivans-11/tgoskits", branch = "axvisor-core", features = ["custom-base", "external-base", "non-zero-vma"] }
+ax-memory-addr = { git = "https://github.com/Ivans-11/tgoskits", branch = "axvisor-core" }
+log = { version = "0.4", default-features = false }
+
+[profile.release]
+opt-level = 2
+lto = "thin"
+codegen-units = 1
+panic = "abort"

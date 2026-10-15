@@ -1,0 +1,4 @@
+[linux]
+url = "https://github.com/torvalds/linux.git"
+# Linux 6.12
+revision = "adc218676eef25575469234709c2d87185ca223a"

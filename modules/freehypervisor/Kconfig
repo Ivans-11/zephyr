@@ -1,0 +1,31 @@
+menuconfig FREEHYPERVISOR
+	bool "FreeHypervisor Zephyr host adapter"
+	depends on X86_64 && SMP && MMU
+	help
+	  Host/substrate adapter for the reusable FreeHypervisor Core.
+
+if FREEHYPERVISOR
+
+config FREEHYPERVISOR_CORE
+	bool "Link and execute the Rust Hypervisor Core"
+	default n
+
+config FREEHYPERVISOR_CONTRACT_TESTS
+	bool "Enable deterministic adapter contract test hooks"
+	default n
+
+config FREEHYPERVISOR_DEDICATED_IPI
+	bool "Enable the dedicated hypervisor IPI vector"
+	default y
+
+config FREEHYPERVISOR_IPI_VECTOR
+	int "Dedicated hypervisor IPI vector"
+	default 240
+	range 224 254
+
+config FREEHYPERVISOR_POOL_MIB
+	int "Reserved hypervisor physical pool size in MiB"
+	default 16
+	range 8 2048
+
+endif
